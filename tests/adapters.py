@@ -4,18 +4,35 @@ import os
 from typing import IO, Any, BinaryIO
 from collections.abc import Iterable
 from jaxtyping import Float, Int
+from einops import einsum
 
 import numpy.typing as npt
 import torch
 from torch import Tensor
 
 
+class Linear(torch.nn.Module):
+    in_features: int
+    out_features: int
+    weight: Float[Tensor, "d_out d_in"]
+
+    def __init__(self, in_features, out_features, device=None, dtype=None) -> None:
+        super().__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.weight = torch.nn.Parameter(
+            data=torch.empty(out_features, in_features, device=device, dtype=dtype)
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return einsum(x, self.weight, "... d_in, d_out d_in -> ... d_out")
+
 
 def run_linear(
     d_in: int,
     d_out: int,
-    weights: Float[Tensor, " d_out d_in"],
-    in_features: Float[Tensor, " ... d_in"],
+    weights: Float[Tensor, "d_out d_in"],
+    in_features: Float[Tensor, "... d_in"],
 ) -> Float[Tensor, " ... d_out"]:
     """
     Given the weights of a Linear layer, compute the transformation of a batched input.
@@ -25,12 +42,14 @@ def run_linear(
         out_dim (int): The size of the output dimension
         weights (Float[Tensor, "d_out d_in"]): The linear weights to use
         in_features (Float[Tensor, "... d_in"]): The output tensor to apply the function to
-    
+
     Returns:
         Float[Tensor, "... d_out"]: The transformed output of your linear module.
     """
-
-    raise NotImplementedError
+    linear = Linear(in_features=d_in, out_features=d_out)
+    # Artificially set the weights to the provided value.
+    linear.weight.data = weights
+    return linear.forward(in_features)
 
 
 def run_embedding(
@@ -47,7 +66,7 @@ def run_embedding(
         d_model (int): The size of the embedding dimension
         weights (Float[Tensor, "vocab_size d_model"]): The embedding vectors to fetch from
         token_ids (Int[Tensor, "..."]): The set of token ids to fetch from the Embedding layer
-    
+
     Returns:
         Float[Tensor, "... d_model"]: Batch of embeddings returned by your Embedding layer.
     """
@@ -301,8 +320,8 @@ def run_transformer_lm(
         num_heads (int): Number of heads to use in multi-headed attention. `d_model` must be
             evenly divisible by `num_heads`.
         d_ff (int): Dimensionality of the feed-forward inner layer (section 3.3).
-        rope_theta (float): The RoPE $\Theta$ parameter.
-        weights (dict[str, Tensor]): 
+        rope_theta (float): The RoPE $Theta$ parameter.
+        weights (dict[str, Tensor]):
             State dict of our reference implementation. {num_layers} refers to an
             integer between `0` and `num_layers - 1` (the layer index).
             The keys of this dictionary are:
@@ -435,7 +454,9 @@ def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, "
     raise NotImplementedError
 
 
-def run_cross_entropy(inputs: Float[Tensor, " batch_size vocab_size"], targets: Int[Tensor, " batch_size"]) -> Float[Tensor, ""]:
+def run_cross_entropy(
+    inputs: Float[Tensor, " batch_size vocab_size"], targets: Int[Tensor, " batch_size"]
+) -> Float[Tensor, ""]:
     """Given a tensor of inputs and targets, compute the average cross-entropy
     loss across examples.
 
@@ -451,7 +472,9 @@ def run_cross_entropy(inputs: Float[Tensor, " batch_size vocab_size"], targets: 
     raise NotImplementedError
 
 
-def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm: float) -> None:
+def run_gradient_clipping(
+    parameters: Iterable[torch.nn.Parameter], max_l2_norm: float
+) -> None:
     """Given a set of parameters, clip their combined gradients to have l2 norm at most max_l2_norm.
 
     Args:
