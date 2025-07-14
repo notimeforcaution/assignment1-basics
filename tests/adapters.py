@@ -10,22 +10,7 @@ import numpy.typing as npt
 import torch
 from torch import Tensor
 
-
-class Linear(torch.nn.Module):
-    in_features: int
-    out_features: int
-    weight: Float[Tensor, "d_out d_in"]
-
-    def __init__(self, in_features, out_features, device=None, dtype=None) -> None:
-        super().__init__()
-        self.in_features = in_features
-        self.out_features = out_features
-        self.weight = torch.nn.Parameter(
-            data=torch.empty(out_features, in_features, device=device, dtype=dtype)
-        )
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return einsum(x, self.weight, "... d_in, d_out d_in -> ... d_out")
+from modules import linear
 
 
 def run_linear(
@@ -46,10 +31,10 @@ def run_linear(
     Returns:
         Float[Tensor, "... d_out"]: The transformed output of your linear module.
     """
-    linear = Linear(in_features=d_in, out_features=d_out)
+    lin = linear.Linear(in_features=d_in, out_features=d_out)
     # Artificially set the weights to the provided value.
-    linear.weight.data = weights
-    return linear.forward(in_features)
+    lin.weight.data = weights
+    return lin(in_features)
 
 
 def run_embedding(
