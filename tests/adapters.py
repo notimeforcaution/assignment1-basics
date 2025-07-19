@@ -37,8 +37,6 @@ def run_linear(
     return linear_layer.forward(in_features)
 
 
-# TODO(ntfc): Not working at the moment. The issue seems that embedding_layer.embedding_matrix.data = weights
-# is not able to override the value of embedding matrix.
 def run_embedding(
     vocab_size: int,
     d_model: int,
