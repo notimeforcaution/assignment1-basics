@@ -8,9 +8,9 @@ from einops import einsum
 
 import numpy.typing as npt
 import torch
-from torch import Tensor
+from torch import Tensor, embedding_bag
 
-from modules import linear
+from modules import linear, embedding
 
 
 def run_linear(
@@ -23,7 +23,7 @@ def run_linear(
     Given the weights of a Linear layer, compute the transformation of a batched input.
 
     Args:
-        in_dim (int): The size of the input dimension
+        in_dim (int): The size of the input dimension.
         out_dim (int): The size of the output dimension
         weights (Float[Tensor, "d_out d_in"]): The linear weights to use
         in_features (Float[Tensor, "... d_in"]): The output tensor to apply the function to
@@ -31,12 +31,14 @@ def run_linear(
     Returns:
         Float[Tensor, "... d_out"]: The transformed output of your linear module.
     """
-    lin = linear.Linear(in_features=d_in, out_features=d_out)
-    # Artificially set the weights to the provided value.
-    lin.weight.data = weights
-    return lin(in_features)
+    linear_layer = linear.Linear(in_features=d_in, out_features=d_out)
+    # Artificially set weights of linear layer. We use .data because linear is nn.Parameters.
+    linear_layer.weights.data = weights
+    return linear_layer.forward(in_features)
 
 
+# TODO(ntfc): Not working at the moment. The issue seems that embedding_layer.embedding_matrix.data = weights
+# is not able to override the value of embedding matrix.
 def run_embedding(
     vocab_size: int,
     d_model: int,
@@ -55,8 +57,12 @@ def run_embedding(
     Returns:
         Float[Tensor, "... d_model"]: Batch of embeddings returned by your Embedding layer.
     """
-
-    raise NotImplementedError
+    embedding_layer = embedding.Embedding(
+        num_embeddings=vocab_size, embedding_dim=d_model
+    )
+    # Artificially set weights / embedding matrix of the Embeddings Layer to provided weights.
+    embedding_layer.embedding_matrix.data = weights
+    return embedding_layer.forward(token_ids)
 
 
 def run_swiglu(
