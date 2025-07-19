@@ -20,7 +20,7 @@ class Linear(nn.Module):
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
-        self.weights = torch.nn.Parameter(data=torch.randn(out_features, in_features))
+        self.weights = nn.Parameter(data=torch.randn(out_features, in_features))
 
     def forward(self, x: Float[Tensor, "... din"]) -> Float[Tensor, "... d_out"]:
         return einsum(x, self.weights, "... d_in, d_out d_in -> ... d_out")
